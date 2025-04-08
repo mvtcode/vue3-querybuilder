@@ -1,6 +1,6 @@
 {
   "name": "@mvtcode/vue3-querybuilder",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A powerful and flexible query builder component for Vue 3 with Element Plus",
   "keywords": [
     "vue",
