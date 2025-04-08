@@ -296,8 +296,16 @@ npm run lint
 
 MIT
 
+## Screenshot
+
+![Vue 3 QueryBuilder Screenshot](./screenshot.png)
+
 ## Author
 
-- **Name**: Tan MV
-- **Email**: tanmv@mpos.vn
-- **Telegram**: tanmac
+Tanmv
+
+Email: [tanmv@mpos.vn](mailto:tanmv@mpos.vn)
+
+Telegram: [@tanmac](https://t.me/tanmac)
+
+Skype: [trai_12a1](skype:trai_12a1?chat)
