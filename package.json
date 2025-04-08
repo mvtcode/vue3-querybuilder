@@ -25,10 +25,11 @@
   ],
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/vue3-querybuilder.es.js",
-      "require": "./dist/vue3-querybuilder.umd.js",
-      "types": "./dist/types/index.d.ts"
-    }
+      "require": "./dist/vue3-querybuilder.umd.js"
+    },
+    "./dist/style.css": "./dist/vue3-querybuilder.css"
   },
   "scripts": {
     "dev": "vite",
