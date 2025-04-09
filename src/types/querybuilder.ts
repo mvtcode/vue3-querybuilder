@@ -48,11 +48,19 @@ export const OperatorText: Record<Operator, string> = {
   [Operator.NOT_BETWEEN]: 'NOT BETWEEN',
 }
 
+export type QueryBuilderValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | null
+  | (string | number | boolean | Date | null)[]
+
 export interface QueryBuilderRule {
   id: string
   field: string
   operator: Operator
-  value: string | number | boolean | Date | (string | number | boolean | Date)[] | undefined
+  value: QueryBuilderValue
   error?: string
 }
 

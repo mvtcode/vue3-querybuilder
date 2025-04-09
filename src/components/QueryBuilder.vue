@@ -95,7 +95,9 @@
                     :name="rule.field"
                     :operator="rule.operator"
                     :modelValue="rule.value"
-                    :onUpdate:modelValue="(val: unknown) => updateRuleValue(rule, val)"
+                    :onUpdate:modelValue="
+                      (val: QueryBuilderValue) => updateRuleValue(rule, val, index)
+                    "
                     :isBetween="
                       rule.operator === Operator.BETWEEN || rule.operator === Operator.NOT_BETWEEN
                     "
@@ -173,7 +175,9 @@
                       class="value-input"
                       placeholder="Please input"
                       data-test="value-input"
-                      @update:modelValue="(val: unknown) => updateRuleValue(rule, val)"
+                      @update:modelValue="
+                        (val: QueryBuilderValue) => updateRuleValue(rule, val, index)
+                      "
                     >
                       <template v-if="getFilter(rule.field)?.input === 'select'">
                         <el-option
@@ -204,7 +208,12 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { Plus, FolderAdd, Delete } from '@element-plus/icons-vue'
-import type { QueryBuilderGroup, QueryBuilderRule, QueryBuilderFilter } from '../types/querybuilder'
+import type {
+  QueryBuilderGroup,
+  QueryBuilderRule,
+  QueryBuilderFilter,
+  QueryBuilderValue,
+} from '../types/querybuilder'
 import { Operator, OperatorText, FilterType } from '../types/querybuilder'
 import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
@@ -250,10 +259,7 @@ watch(
       if (!isGroup(rule)) {
         if (rule.operator === Operator.BETWEEN || rule.operator === Operator.NOT_BETWEEN) {
           if (!Array.isArray(rule.value)) {
-            rule.value = [
-              '' as string | number | boolean | Date,
-              '' as string | number | boolean | Date,
-            ]
+            rule.value = [0, 0]
           }
         }
       }
@@ -278,8 +284,10 @@ const isGroup = (rule: QueryBuilderRule | QueryBuilderGroup): rule is QueryBuild
   return 'condition' in rule
 }
 
-const getFieldOccurrences = (field: string): number => {
-  return group.value.rules.filter((rule) => !isGroup(rule) && rule.field === field).length
+const getOccurrences = (field: string): number => {
+  return group.value.rules.filter(
+    (rule: QueryBuilderRule | QueryBuilderGroup) => !isGroup(rule) && rule.field === field,
+  ).length
 }
 
 const getFilter = (field: string): QueryBuilderFilter | undefined => {
@@ -288,7 +296,7 @@ const getFilter = (field: string): QueryBuilderFilter | undefined => {
 
 const getAvailableFilters = (currentField?: string): QueryBuilderFilter[] => {
   return props.filters.filter((filter) => {
-    const occurrences = getFieldOccurrences(filter.field)
+    const occurrences = getOccurrences(filter.field)
     const maxOccurrences = filter.maxOccurrences || 1
     return filter.field === currentField || occurrences < maxOccurrences
   })
@@ -296,7 +304,7 @@ const getAvailableFilters = (currentField?: string): QueryBuilderFilter[] => {
 
 const canAddRule = computed(() => {
   return props.filters.some((filter) => {
-    const occurrences = getFieldOccurrences(filter.field)
+    const occurrences = getOccurrences(filter.field)
     const maxOccurrences = filter.maxOccurrences || 1
     return occurrences < maxOccurrences
   })
@@ -350,25 +358,20 @@ const getInputProps = (field: string) => {
   return props
 }
 
-const updateRuleValue = (rule: QueryBuilderRule, value: unknown, index?: number) => {
+const updateRuleValue = (rule: QueryBuilderRule, value: QueryBuilderValue, index?: number) => {
   if (index !== undefined) {
-    if (!Array.isArray(rule.value)) {
-      rule.value = ['', ''] as string[]
+    if (Array.isArray(rule.value)) {
+      ;(rule.value as any[])[index] = value
     }
-    ;(rule.value as (string | number | boolean | Date)[])[index] = value as
-      | string
-      | number
-      | boolean
-      | Date
   } else {
-    rule.value = value as string | number | boolean | Date | (string | number | boolean | Date)[]
+    rule.value = value
   }
   emit('update:modelValue', group.value)
 }
 
 const addRule = () => {
   const availableFilter = props.filters.find((filter) => {
-    const occurrences = getFieldOccurrences(filter.field)
+    const occurrences = getOccurrences(filter.field)
     const maxOccurrences = filter.maxOccurrences || 1
     return occurrences < maxOccurrences
   })
@@ -379,10 +382,7 @@ const addRule = () => {
       id: crypto.randomUUID(),
       field: availableFilter.field,
       operator: operator,
-      value:
-        operator === Operator.BETWEEN || operator === Operator.NOT_BETWEEN
-          ? (['', ''] as string[])
-          : '',
+      value: operator === Operator.BETWEEN || operator === Operator.NOT_BETWEEN ? [0, 0] : '',
       error: undefined,
     }
     group.value.rules.push(rule)
@@ -412,7 +412,7 @@ const onFieldChange = (rule: QueryBuilderRule) => {
   const operator = getOperators(rule.field)[0]
   rule.operator = operator
   if (operator === Operator.BETWEEN || operator === Operator.NOT_BETWEEN) {
-    rule.value = ['' as string | number | boolean | Date, '' as string | number | boolean | Date]
+    rule.value = [0, 0]
   } else {
     rule.value = ''
   }
@@ -422,12 +422,11 @@ const onFieldChange = (rule: QueryBuilderRule) => {
 
 const onOperatorChange = (rule: QueryBuilderRule) => {
   if (rule.operator === Operator.BETWEEN || rule.operator === Operator.NOT_BETWEEN) {
-    rule.value = ['' as string | number | boolean | Date, '' as string | number | boolean | Date]
+    rule.value = [null, null]
   } else {
-    rule.value = ''
+    rule.value = null
   }
-  validateBetweenValue(rule)
-  emit('update:modelValue', group.value)
+  emit('update:modelValue', { ...group.value })
 }
 
 const validateBetweenValue = (rule: QueryBuilderRule) => {
