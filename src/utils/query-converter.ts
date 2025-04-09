@@ -67,7 +67,10 @@ function ruleToSQL(rule: QueryBuilderRule): string {
       return `${rule.field} ${operator} (${Array.isArray(rule.value) ? rule.value.map(escapeSQL).join(', ') : escapeSQL(rule.value)})`
     case Operator.BETWEEN:
     case Operator.NOT_BETWEEN:
-      return `${rule.field} ${operator} ${escapeSQL(rule.value[0])} AND ${escapeSQL(rule.value[1])}`
+      if (rule.value && Array.isArray(rule.value)) {
+        return `${rule.field} ${operator} ${escapeSQL(rule.value[0])} AND ${escapeSQL(rule.value[1])}`
+      }
+      return ''
     case Operator.IS_EMPTY:
     case Operator.IS_NOT_EMPTY:
       return `${rule.field} ${operator}`
@@ -93,16 +96,24 @@ function ruleToMongo(rule: QueryBuilderRule): Record<string, any> {
     case Operator.NOT_ENDS_WITH:
       return { [rule.field]: { [operator]: { $regex: `${rule.value}$`, $options: 'i' } } }
     case Operator.BETWEEN:
-      return {
-        [rule.field]: {
-          $gte: rule.value[0],
-          $lte: rule.value[1],
-        },
+      if (rule.value && Array.isArray(rule.value)) {
+        const [from, to] = rule.value as [unknown, unknown]
+        return {
+          [rule.field]: {
+            $gte: from,
+            $lte: to,
+          },
+        }
       }
+      return {}
     case Operator.NOT_BETWEEN:
-      return {
-        $or: [{ [rule.field]: { $lt: rule.value[0] } }, { [rule.field]: { $gt: rule.value[1] } }],
+      if (rule.value && Array.isArray(rule.value)) {
+        const [from, to] = rule.value as [unknown, unknown]
+        return {
+          $or: [{ [rule.field]: { $lt: from } }, { [rule.field]: { $gt: to } }],
+        }
       }
+      return {}
     case Operator.IS_EMPTY:
       return { [rule.field]: { $exists: false } }
     case Operator.IS_NOT_EMPTY:
@@ -206,3 +217,122 @@ export function fromMongo(mongo: Record<string, any>): QueryBuilderGroup {
     rules,
   }
 }
+
+const formatValue = (value: unknown): string => {
+  if (value === undefined) return 'NULL'
+  if (typeof value === 'string') return `'${value}'`
+  if (Array.isArray(value)) {
+    return `(${value.map(formatValue).join(', ')})`
+  }
+  return String(value)
+}
+
+const convertToSql = (rule: QueryBuilderRule): string => {
+  const { field, operator } = rule
+  const value = rule.value as unknown
+  const fieldName = `\`${field}\``
+
+  switch (operator) {
+    case Operator.EQUAL:
+      return `${fieldName} = ${formatValue(value)}`
+    case Operator.NOT_EQUAL:
+      return `${fieldName} != ${formatValue(value)}`
+    case Operator.CONTAINS:
+      return `${fieldName} LIKE '%${value as string}%'`
+    case Operator.NOT_CONTAINS:
+      return `${fieldName} NOT LIKE '%${value as string}%'`
+    case Operator.BEGINS_WITH:
+      return `${fieldName} LIKE '${value as string}%'`
+    case Operator.ENDS_WITH:
+      return `${fieldName} LIKE '%${value as string}'`
+    case Operator.GREATER:
+      return `${fieldName} > ${formatValue(value)}`
+    case Operator.GREATER_OR_EQUAL:
+      return `${fieldName} >= ${formatValue(value)}`
+    case Operator.LESS:
+      return `${fieldName} < ${formatValue(value)}`
+    case Operator.LESS_OR_EQUAL:
+      return `${fieldName} <= ${formatValue(value)}`
+    case Operator.IN:
+      return `${fieldName} IN ${formatValue(value)}`
+    case Operator.NOT_IN:
+      return `${fieldName} NOT IN ${formatValue(value)}`
+    case Operator.BETWEEN:
+      if (Array.isArray(value)) {
+        const [from, to] = value as [unknown, unknown]
+        return `${fieldName} BETWEEN ${formatValue(from)} AND ${formatValue(to)}`
+      }
+      return ''
+    case Operator.NOT_BETWEEN:
+      if (Array.isArray(value)) {
+        const [from, to] = value as [unknown, unknown]
+        return `${fieldName} NOT BETWEEN ${formatValue(from)} AND ${formatValue(to)}`
+      }
+      return ''
+    case Operator.IS_EMPTY:
+      return `${fieldName} IS NULL`
+    case Operator.IS_NOT_EMPTY:
+      return `${fieldName} IS NOT NULL`
+    default:
+      return ''
+  }
+}
+
+const convertToMongo = (rule: QueryBuilderRule): Record<string, unknown> => {
+  const { field, operator } = rule
+  const value = rule.value as unknown
+
+  switch (operator) {
+    case Operator.EQUAL:
+      return { [field]: value }
+    case Operator.NOT_EQUAL:
+      return { [field]: { $ne: value } }
+    case Operator.CONTAINS:
+      return { [field]: { $regex: value as string, $options: 'i' } }
+    case Operator.NOT_CONTAINS:
+      return { [field]: { $not: { $regex: value as string, $options: 'i' } } }
+    case Operator.BEGINS_WITH:
+      return { [field]: { $regex: `^${value as string}`, $options: 'i' } }
+    case Operator.ENDS_WITH:
+      return { [field]: { $regex: `${value as string}$`, $options: 'i' } }
+    case Operator.GREATER:
+      return { [field]: { $gt: value } }
+    case Operator.GREATER_OR_EQUAL:
+      return { [field]: { $gte: value } }
+    case Operator.LESS:
+      return { [field]: { $lt: value } }
+    case Operator.LESS_OR_EQUAL:
+      return { [field]: { $lte: value } }
+    case Operator.IN:
+      return { [field]: { $in: value as unknown[] } }
+    case Operator.NOT_IN:
+      return { [field]: { $nin: value as unknown[] } }
+    case Operator.BETWEEN:
+      if (Array.isArray(value)) {
+        const [from, to] = value as [unknown, unknown]
+        return {
+          [field]: {
+            $gte: from,
+            $lte: to,
+          },
+        }
+      }
+      return {}
+    case Operator.NOT_BETWEEN:
+      if (Array.isArray(value)) {
+        const [from, to] = value as [unknown, unknown]
+        return {
+          $or: [{ [field]: { $lt: from } }, { [field]: { $gt: to } }],
+        }
+      }
+      return {}
+    case Operator.IS_EMPTY:
+      return { [field]: { $exists: false } }
+    case Operator.IS_NOT_EMPTY:
+      return { [field]: { $exists: true } }
+    default:
+      return {}
+  }
+}
+
+export { convertToSql, convertToMongo }

@@ -41,6 +41,16 @@ export default defineComponent({
           min: 0,
           max: 100,
         },
+        operators: [
+          Operator.EQUAL,
+          Operator.NOT_EQUAL,
+          Operator.GREATER,
+          Operator.GREATER_OR_EQUAL,
+          Operator.LESS,
+          Operator.LESS_OR_EQUAL,
+          Operator.BETWEEN,
+          Operator.NOT_BETWEEN,
+        ],
       },
       {
         field: 'birthdate',
@@ -50,6 +60,16 @@ export default defineComponent({
         validation: {
           format: 'YYYY-MM-DD',
         },
+        operators: [
+          Operator.EQUAL,
+          Operator.NOT_EQUAL,
+          Operator.GREATER,
+          Operator.GREATER_OR_EQUAL,
+          Operator.LESS,
+          Operator.LESS_OR_EQUAL,
+          Operator.BETWEEN,
+          Operator.NOT_BETWEEN,
+        ],
       },
       {
         field: 'active',
