@@ -6,6 +6,7 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import { FilterType, Operator, OperatorText } from '@/types/querybuilder'
 import type { QueryBuilderFilter, QueryBuilderGroup, QueryBuilderRule } from '@/types/querybuilder'
+import { createI18n } from 'vue-i18n'
 
 describe('QueryBuilder.vue', () => {
   const filters: QueryBuilderFilter[] = [
@@ -18,20 +19,59 @@ describe('QueryBuilder.vue', () => {
       field: 'age',
       label: 'Age',
       type: FilterType.NUMBER,
+      operators: [
+        Operator.EQUAL,
+        Operator.NOT_EQUAL,
+        Operator.GREATER,
+        Operator.LESS,
+        Operator.BETWEEN,
+        Operator.NOT_BETWEEN,
+      ],
+    },
+    {
+      field: 'birthdate',
+      label: 'Birth Date',
+      type: FilterType.DATE,
+      operators: [
+        Operator.EQUAL,
+        Operator.NOT_EQUAL,
+        Operator.GREATER,
+        Operator.LESS,
+        Operator.BETWEEN,
+        Operator.NOT_BETWEEN,
+      ],
     },
   ]
+
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    messages: {
+      en: {
+        queryBuilder: {
+          addRule: 'Add Rule',
+          addGroup: 'Add Group',
+          removeGroup: 'Remove Group',
+          from: 'From',
+          to: 'To',
+          and: 'And',
+        },
+      },
+    },
+  })
 
   const createWrapper = () => {
     return mount(QueryBuilder, {
       props: {
         modelValue: {
+          type: 'group',
           condition: 'AND',
           rules: [],
         } as QueryBuilderGroup,
         filters,
       },
       global: {
-        plugins: [ElementPlus],
+        plugins: [ElementPlus, i18n],
       },
       attachTo: document.body,
     })
@@ -271,5 +311,202 @@ describe('QueryBuilder.vue', () => {
     const newValue = emitted?.[0]?.[0] as QueryBuilderGroup
     const nestedGroup = newValue.rules[0] as QueryBuilderGroup
     expect(nestedGroup.rules.length).toBe(1)
+  })
+
+  it('handles between operator for number type', async () => {
+    const wrapper = createWrapper()
+    await nextTick()
+    const addRuleBtn = wrapper.find('[data-test="add-rule"]')
+    await addRuleBtn.trigger('click')
+    await nextTick()
+
+    // Select age field
+    const fieldSelect = wrapper.find('[data-test="field-select"]')
+    await fieldSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const ageOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === 'Age')
+    await ageOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    // Select between operator
+    const operatorSelect = wrapper.find('[data-test="operator-select"]')
+    await operatorSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const betweenOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === OperatorText[Operator.BETWEEN])
+    await betweenOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    // Check if two inputs are rendered
+    const fromInput = wrapper.find('[data-test="value-input-from"]')
+    const toInput = wrapper.find('[data-test="value-input-to"]')
+    expect(fromInput.exists()).toBe(true)
+    expect(toInput.exists()).toBe(true)
+
+    // Set values
+    await fromInput.setValue(10)
+    await nextTick()
+    await toInput.setValue(20)
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const emitted = wrapper.emitted('update:modelValue')
+    expect(emitted).toBeTruthy()
+    const lastEmitted = (emitted as unknown[][])[emitted!.length - 1][0] as QueryBuilderGroup
+    const rule = lastEmitted.rules[0] as QueryBuilderRule
+    expect(rule.value).toEqual([10, 20])
+  })
+
+  it('handles between operator for date type', async () => {
+    const wrapper = createWrapper()
+    await nextTick()
+    const addRuleBtn = wrapper.find('[data-test="add-rule"]')
+    await addRuleBtn.trigger('click')
+    await nextTick()
+
+    // Select birthdate field
+    const fieldSelect = wrapper.find('[data-test="field-select"]')
+    await fieldSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const birthdateOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === 'Birth Date')
+    await birthdateOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    // Select between operator
+    const operatorSelect = wrapper.find('[data-test="operator-select"]')
+    await operatorSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const betweenOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === OperatorText[Operator.BETWEEN])
+    await betweenOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    // Check if two date pickers are rendered
+    const fromInput = wrapper.find('[data-test="value-input-from"]')
+    const toInput = wrapper.find('[data-test="value-input-to"]')
+    expect(fromInput.exists()).toBe(true)
+    expect(toInput.exists()).toBe(true)
+
+    // Set values
+    const fromDate = '2023-01-01'
+    const toDate = '2023-12-31'
+    await fromInput.setValue(fromDate)
+    await nextTick()
+    await toInput.setValue(toDate)
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const emitted = wrapper.emitted('update:modelValue')
+    expect(emitted).toBeTruthy()
+    const lastEmitted = (emitted as unknown[][])[emitted!.length - 1][0] as QueryBuilderGroup
+    const rule = lastEmitted.rules[0] as QueryBuilderRule
+    expect(rule.value).toEqual([fromDate, toDate])
+  })
+
+  it('initializes between values correctly', async () => {
+    const wrapper = createWrapper()
+    await nextTick()
+    const addRuleBtn = wrapper.find('[data-test="add-rule"]')
+    await addRuleBtn.trigger('click')
+    await nextTick()
+
+    // Select age field
+    const fieldSelect = wrapper.find('[data-test="field-select"]')
+    await fieldSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const ageOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === 'Age')
+    await ageOption?.trigger('click')
+    await nextTick()
+
+    // Select between operator
+    const operatorSelect = wrapper.find('[data-test="operator-select"]')
+    await operatorSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const betweenOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === OperatorText[Operator.BETWEEN])
+    await betweenOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    const emitted = wrapper.emitted('update:modelValue')
+    expect(emitted).toBeTruthy()
+    const lastEmitted = (emitted as unknown[][])[emitted!.length - 1][0] as QueryBuilderGroup
+    const rule = lastEmitted.rules[0] as QueryBuilderRule
+    expect(rule.value).toEqual([null, null])
+  })
+
+  it('updates between values when operator changes', async () => {
+    const wrapper = createWrapper()
+    await nextTick()
+    const addRuleBtn = wrapper.find('[data-test="add-rule"]')
+    await addRuleBtn.trigger('click')
+    await nextTick()
+
+    // Select age field
+    const fieldSelect = wrapper.find('[data-test="field-select"]')
+    await fieldSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const ageOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === 'Age')
+    await ageOption?.trigger('click')
+    await nextTick()
+
+    // Select between operator
+    const operatorSelect = wrapper.find('[data-test="operator-select"]')
+    await operatorSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const betweenOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === OperatorText[Operator.BETWEEN])
+    await betweenOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    // Set values
+    const fromInput = wrapper.find('[data-test="value-input-from"]')
+    const toInput = wrapper.find('[data-test="value-input-to"]')
+    await fromInput.setValue(10)
+    await nextTick()
+    await toInput.setValue(20)
+    await nextTick()
+
+    // Change operator back to equal
+    await operatorSelect.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const equalOption = wrapper
+      .findAll('.el-select-dropdown__item')
+      .find((option) => option.text() === OperatorText[Operator.EQUAL])
+    await equalOption?.trigger('click')
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    const emitted = wrapper.emitted('update:modelValue')
+    expect(emitted).toBeTruthy()
+    const lastEmitted = (emitted as unknown[][])[emitted!.length - 1][0] as QueryBuilderGroup
+    const rule = lastEmitted.rules[0] as QueryBuilderRule
+    expect(rule.value).toBe(null)
   })
 })

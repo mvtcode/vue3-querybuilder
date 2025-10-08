@@ -93,10 +93,12 @@ enum Operator {
 
 ## Props
 
-| Prop       | Type                                    | Default | Description                |
-| ---------- | --------------------------------------- | ------- | -------------------------- |
-| modelValue | `QueryBuilderRule \| QueryBuilderGroup` | -       | The current query value    |
-| filters    | `Filter[]`                              | `[]`    | Array of available filters |
+| Prop       | Type                                    | Default | Description                                                                                                                                 |
+| ---------- | --------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| modelValue | `QueryBuilderRule \| QueryBuilderGroup` | -       | The current query value                                                                                                                     |
+| filters    | `Filter[]`                              | `[]`    | Array of available filters                                                                                                                  |
+| maxDepth   | `number`                                | `0`     | Maximum depth of nested groups. Set to 0 for unlimited depth, 1 to disable nested groups, or any positive number to limit the nesting level |
+| language   | `string`                                | `'vi'`  | Language for the component UI (supports 'en' and 'vi')                                                                                      |
 
 ## Events
 
@@ -273,6 +275,235 @@ The result is returned as an object with the following structure:
 }
 ```
 
+## Query Conversion
+
+### To SQL
+
+```typescript
+import { toSQL } from '@mvtcode/vue3-querybuilder'
+
+const rules = {
+  type: 'group',
+  condition: 'and',
+  rules: [
+    {
+      type: 'rule',
+      field: 'name',
+      operator: Operator.EQUAL,
+      value: 'John',
+    },
+    {
+      type: 'rule',
+      field: 'age',
+      operator: Operator.GREATER_OR_EQUAL,
+      value: 18,
+    },
+  ],
+}
+
+const sqlWhere = toSQL(rules)
+// Output: name = 'John' AND age >= 18
+```
+
+### To MongoDB
+
+```typescript
+import { toMongo } from '@mvtcode/vue3-querybuilder'
+
+const rules = {
+  type: 'group',
+  condition: 'and',
+  rules: [
+    {
+      type: 'rule',
+      field: 'name',
+      operator: Operator.EQUAL,
+      value: 'John',
+    },
+    {
+      type: 'rule',
+      field: 'age',
+      operator: Operator.GREATER_OR_EQUAL,
+      value: 18,
+    },
+  ],
+}
+
+const mongoQuery = toMongo(rules)
+// Output: {
+//   $and: [
+//     { name: { $eq: 'John' } },
+//     { age: { $gte: 18 } }
+//   ]
+// }
+```
+
+### From SQL
+
+```typescript
+import { fromSQL } from '@mvtcode/vue3-querybuilder'
+
+const rules = fromSQL("name = 'John' AND age >= 18")
+// Output: {
+//   type: 'group',
+//   condition: 'and',
+//   rules: [
+//     {
+//       type: 'rule',
+//       field: 'name',
+//       operator: Operator.EQUAL,
+//       value: 'John'
+//     },
+//     {
+//       type: 'rule',
+//       field: 'age',
+//       operator: Operator.GREATER_OR_EQUAL,
+//       value: 18
+//     }
+//   ]
+// }
+```
+
+### From MongoDB
+
+```typescript
+import { fromMongo } from '@mvtcode/vue3-querybuilder'
+
+const rules = fromMongo({
+  $and: [{ name: { $eq: 'John' } }, { age: { $gte: 18 } }],
+})
+// Output: {
+//   type: 'group',
+//   condition: 'and',
+//   rules: [
+//     {
+//       type: 'rule',
+//       field: 'name',
+//       operator: Operator.EQUAL,
+//       value: 'John'
+//     },
+//     {
+//       type: 'rule',
+//       field: 'age',
+//       operator: Operator.GREATER_OR_EQUAL,
+//       value: 18
+//     }
+//   ]
+// }
+```
+
+### Supported Operators Mapping
+
+| QueryBuilder Operator | SQL Operator | MongoDB Operator |
+| --------------------- | ------------ | ---------------- |
+| EQUAL                 | =            | $eq              |
+| NOT_EQUAL             | !=           | $ne              |
+| CONTAINS              | LIKE         | $regex           |
+| NOT_CONTAINS          | NOT LIKE     | $not             |
+| BEGINS_WITH           | LIKE         | $regex           |
+| ENDS_WITH             | LIKE         | $regex           |
+| GREATER               | >            | $gt              |
+| GREATER_OR_EQUAL      | >=           | $gte             |
+| LESS                  | <            | $lt              |
+| LESS_OR_EQUAL         | <=           | $lte             |
+| IN                    | IN           | $in              |
+| NOT_IN                | NOT IN       | $nin             |
+| BETWEEN               | BETWEEN      | $and             |
+| NOT_BETWEEN           | NOT BETWEEN  | $nor             |
+| IS_EMPTY              | IS NULL      | $exists: false   |
+| IS_NOT_EMPTY          | IS NOT NULL  | $exists: true    |
+
+## Slots
+
+Component provides dynamic slots for each field to customize the value input:
+
+```vue
+<template>
+  <QueryBuilder v-model="query" :filters="filters">
+    <!-- Custom input for name field -->
+    <template #name="{ operator, modelValue }">
+      <el-input v-model="modelValue" placeholder="Enter name" />
+    </template>
+
+    <!-- Custom input for age field -->
+    <template #age="{ operator, modelValue, isBetween }">
+      <template v-if="isBetween">
+        <div class="between-inputs">
+          <el-input-number v-model="modelValue[0]" :min="0" :max="100" placeholder="From" />
+          <el-input-number v-model="modelValue[1]" :min="0" :max="100" placeholder="To" />
+        </div>
+      </template>
+      <template v-else>
+        <el-input-number v-model="modelValue" :min="0" :max="100" />
+      </template>
+    </template>
+
+    <!-- Custom input for birthdate field -->
+    <template #birthdate="{ operator, modelValue, isBetween }">
+      <template v-if="isBetween">
+        <div class="between-inputs">
+          <el-date-picker
+            v-model="modelValue[0]"
+            type="date"
+            placeholder="From date"
+            format="YYYY-MM-DD"
+          />
+          <el-date-picker
+            v-model="modelValue[1]"
+            type="date"
+            placeholder="To date"
+            format="YYYY-MM-DD"
+          />
+        </div>
+      </template>
+      <template v-else>
+        <el-date-picker
+          v-model="modelValue"
+          type="date"
+          placeholder="Select date"
+          format="YYYY-MM-DD"
+        />
+      </template>
+    </template>
+
+    <!-- Custom input for status field -->
+    <template #status="{ operator, modelValue }">
+      <el-select v-model="modelValue" placeholder="Select status">
+        <el-option label="Pending" value="pending" />
+        <el-option label="Completed" value="completed" />
+      </el-select>
+    </template>
+  </QueryBuilder>
+</template>
+
+<style>
+.between-inputs {
+  display: flex;
+  gap: 1rem;
+}
+</style>
+```
+
+### Slot Props
+
+| Name       | Type      | Description                                    |
+| ---------- | --------- | ---------------------------------------------- |
+| operator   | `string`  | Current operator of the rule                   |
+| modelValue | `any`     | Current value of the rule                      |
+| isBetween  | `boolean` | Whether the operator is BETWEEN or NOT_BETWEEN |
+
+### Dynamic Slots
+
+The component automatically generates slots based on the field names in your filters configuration. For example, if you have a filter with `field: 'name'`, you can use `#name` slot to customize its input.
+
+Each slot receives the same props:
+
+- `operator`: Current operator selected for the rule
+- `modelValue`: Current value of the rule (supports v-model)
+- `isBetween`: Boolean flag indicating if the operator is BETWEEN or NOT_BETWEEN
+
+When `isBetween` is true, the `modelValue` will be an array with two elements for the range values.
+
 ## Development
 
 ```sh
@@ -302,10 +533,65 @@ MIT
 
 ## Author
 
-Tanmv
+Mạc Tân (Tanmv)
 
 Email: [tanmv@mpos.vn](mailto:tanmv@mpos.vn)
+
+FB: [Mạc Tân](https://facebook.com/mvt.hp.star)
 
 Telegram: [@tanmac](https://t.me/tanmac)
 
 Skype: [trai_12a1](skype:trai_12a1?chat)
+
+## Examples
+
+### Basic Usage with Max Depth
+
+```vue
+<template>
+  <QueryBuilder
+    v-model="query"
+    :filters="filters"
+    :max-depth="2"  <!-- Limit nesting to 2 levels -->
+    @update:modelValue="onQueryChange"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { QueryBuilder } from '@mvtcode/vue3-querybuilder'
+import type { QueryBuilderRule, QueryBuilderGroup } from '@mvtcode/vue3-querybuilder'
+import { FilterType, Operator } from '@mvtcode/vue3-querybuilder'
+
+const query = ref<QueryBuilderRule | QueryBuilderGroup>({
+  type: 'group',
+  condition: 'AND',
+  rules: []
+})
+
+const filters = [
+  {
+    field: 'name',
+    label: 'Name',
+    type: FilterType.STRING,
+    operators: [Operator.EQUAL, Operator.NOT_EQUAL, Operator.CONTAINS, Operator.NOT_CONTAINS],
+  },
+  {
+    field: 'age',
+    label: 'Age',
+    type: FilterType.NUMBER,
+    operators: [Operator.EQUAL, Operator.NOT_EQUAL, Operator.GREATER, Operator.LESS],
+  },
+]
+
+const onQueryChange = (newQuery: QueryBuilderRule | QueryBuilderGroup) => {
+  console.log('Query changed:', newQuery)
+}
+</script>
+```
+
+### Max Depth Options
+
+- `maxDepth={0}`: Unlimited nesting (default)
+- `maxDepth={1}`: Disable nested groups completely
+- `maxDepth={n}`: Limit nesting to n levels (where n is a positive number)
