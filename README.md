@@ -158,74 +158,109 @@ interface Filter {
 
 ## Filter Types
 
-### 1. Text (STRING)
+### 1. Text (STRING) - Với tất cả operators
 
 ```typescript
 {
   field: 'name',
   label: 'Name',
-  type: 'string',
-  operators: ['equal', 'not_equal', 'contains', 'not_contains']
+  type: FilterType.STRING,
+  operators: [
+    Operator.EQUAL,
+    Operator.NOT_EQUAL,
+    Operator.CONTAINS,
+    Operator.NOT_CONTAINS,
+    Operator.BEGINS_WITH,
+    Operator.NOT_BEGINS_WITH,
+    Operator.ENDS_WITH,
+    Operator.NOT_ENDS_WITH,
+    Operator.IS_EMPTY,
+    Operator.IS_NOT_EMPTY,
+  ],
 }
 ```
 
-### 2. Number
+### 2. Email - Với validation tự động
+
+```typescript
+{
+  field: 'email',
+  label: 'Email',
+  type: FilterType.EMAIL,
+  operators: [Operator.EQUAL, Operator.NOT_EQUAL, Operator.CONTAINS, Operator.NOT_CONTAINS],
+  input: 'email',
+}
+```
+
+### 3. Integer - Với validation và BETWEEN support
 
 ```typescript
 {
   field: 'age',
   label: 'Age',
-  type: 'number',
-  operators: ['equal', 'not_equal', 'greater', 'less'],
+  type: FilterType.INTEGER,
   validation: {
     min: 0,
-    max: 100
-  }
+    max: 100,
+  },
+  operators: [
+    Operator.EQUAL,
+    Operator.NOT_EQUAL,
+    Operator.GREATER,
+    Operator.GREATER_OR_EQUAL,
+    Operator.LESS,
+    Operator.LESS_OR_EQUAL,
+    Operator.BETWEEN,
+    Operator.NOT_BETWEEN,
+  ],
 }
 ```
 
-### 3. Date
+### 4. Date - Với date picker và range support
 
 ```typescript
 {
   field: 'birthdate',
   label: 'Birth Date',
-  type: 'date',
+  type: FilterType.DATE,
   input: 'date',
   validation: {
-    format: 'YYYY-MM-DD'
-  }
+    format: 'YYYY-MM-DD',
+  },
+  operators: [
+    Operator.EQUAL,
+    Operator.NOT_EQUAL,
+    Operator.GREATER,
+    Operator.GREATER_OR_EQUAL,
+    Operator.LESS,
+    Operator.LESS_OR_EQUAL,
+    Operator.BETWEEN,
+    Operator.NOT_BETWEEN,
+  ],
 }
 ```
 
-### 4. Boolean
+### 5. Boolean - Với checkbox
 
 ```typescript
 {
   field: 'active',
   label: 'Active',
-  type: 'boolean',
-  input: 'radio',
-  values: [
-    { value: '1', text: 'Yes' },
-    { value: '0', text: 'No' }
-  ]
+  type: FilterType.BOOLEAN,
+  input: 'checkbox',
 }
 ```
 
-### 5. Select (Dropdown)
+### 6. Select (Dropdown) - Với multiple support
 
 ```typescript
 {
   field: 'status',
   label: 'Status',
-  type: 'string',
+  type: FilterType.STRING,
   input: 'select',
-  values: [
-    { value: 'pending', text: 'Pending' },
-    { value: 'completed', text: 'Completed' }
-  ],
-  operators: ['equal', 'not_equal', 'in', 'not_in']
+  value: 'pending', // Giá trị mặc định
+  operators: [Operator.EQUAL, Operator.NOT_EQUAL, Operator.IN, Operator.NOT_IN],
 }
 ```
 
@@ -413,96 +448,210 @@ const rules = fromMongo({
 | IS_EMPTY              | IS NULL      | $exists: false   |
 | IS_NOT_EMPTY          | IS NOT NULL  | $exists: true    |
 
-## Slots
+## Tính năng mới và cải tiến
 
-Component provides dynamic slots for each field to customize the value input:
+### 1. Custom Slots với Dynamic Props
+
+Component cung cấp dynamic slots cho mỗi field với các props mở rộng:
 
 ```vue
 <template>
   <QueryBuilder v-model="query" :filters="filters">
-    <!-- Custom input for name field -->
-    <template #name="{ operator, modelValue }">
-      <el-input v-model="modelValue" placeholder="Enter name" />
+    <!-- Custom input cho email với validation -->
+    <template #email="{ rule, widthValueInput }">
+      <el-input
+        v-model="rule.value"
+        placeholder="Enter email"
+        clearable
+        :style="{ width: `${widthValueInput}px` }"
+      />
     </template>
 
-    <!-- Custom input for age field -->
-    <template #age="{ operator, modelValue, isBetween }">
-      <template v-if="isBetween">
-        <div class="between-inputs">
-          <el-input-number v-model="modelValue[0]" :min="0" :max="100" placeholder="From" />
-          <el-input-number v-model="modelValue[1]" :min="0" :max="100" placeholder="To" />
-        </div>
-      </template>
-      <template v-else>
-        <el-input-number v-model="modelValue" :min="0" :max="100" />
-      </template>
-    </template>
-
-    <!-- Custom input for birthdate field -->
-    <template #birthdate="{ operator, modelValue, isBetween }">
-      <template v-if="isBetween">
-        <div class="between-inputs">
-          <el-date-picker
-            v-model="modelValue[0]"
-            type="date"
-            placeholder="From date"
-            format="YYYY-MM-DD"
-          />
-          <el-date-picker
-            v-model="modelValue[1]"
-            type="date"
-            placeholder="To date"
-            format="YYYY-MM-DD"
-          />
-        </div>
-      </template>
-      <template v-else>
-        <el-date-picker
-          v-model="modelValue"
-          type="date"
-          placeholder="Select date"
-          format="YYYY-MM-DD"
+    <!-- Custom input cho age với BETWEEN support -->
+    <template #age="{ isBetween, rule, widthValueInput }">
+      <el-input-number
+        v-if="!isBetween"
+        v-model="rule.value"
+        :min="0"
+        :max="100"
+        clearable
+        :style="{ width: `${widthValueInput}px` }"
+      />
+      <div v-else style="display: flex; align-items: center; gap: 10px">
+        <el-input-number
+          v-model="(rule.value as number[])[0]"
+          :min="0"
+          :max="100"
+          clearable
+          :style="{ width: `${widthValueInput}px` }"
         />
-      </template>
+        <span>and</span>
+        <el-input-number
+          v-model="(rule.value as number[])[1]"
+          :min="0"
+          :max="100"
+          clearable
+          :style="{ width: `${widthValueInput}px` }"
+        />
+      </div>
     </template>
 
-    <!-- Custom input for status field -->
-    <template #status="{ operator, modelValue }">
-      <el-select v-model="modelValue" placeholder="Select status">
+    <!-- Custom date picker với range support -->
+    <template #birthdate="{ rule, isBetween, widthValueInput }">
+      <el-date-picker
+        v-model="rule.value"
+        :type="isBetween ? 'daterange' : 'date'"
+        placeholder="Select date"
+        range-separator="To"
+        start-placeholder="Start date"
+        end-placeholder="End date"
+        clearable
+        :style="{ width: `${widthValueInput}px` }"
+      />
+    </template>
+
+    <!-- Custom checkbox cho boolean -->
+    <template #active="{ rule, widthValueInput }">
+      <el-checkbox v-model="rule.value" :style="{ width: `${widthValueInput}px` }"
+        >Active/Inactive</el-checkbox
+      >
+    </template>
+
+    <!-- Custom select với multiple support -->
+    <template #status="{ rule, widthValueInput }">
+      <el-select
+        v-model="rule.value"
+        placeholder="Select status"
+        :multiple="[Operator.IN, Operator.NOT_IN].includes(rule.operator)"
+        clearable
+        :style="{ width: `${widthValueInput}px` }"
+      >
         <el-option label="Pending" value="pending" />
         <el-option label="Completed" value="completed" />
       </el-select>
     </template>
   </QueryBuilder>
 </template>
-
-<style>
-.between-inputs {
-  display: flex;
-  gap: 1rem;
-}
-</style>
 ```
 
-### Slot Props
+### 2. Enhanced Filter Types
 
-| Name       | Type      | Description                                    |
-| ---------- | --------- | ---------------------------------------------- |
-| operator   | `string`  | Current operator of the rule                   |
-| modelValue | `any`     | Current value of the rule                      |
-| isBetween  | `boolean` | Whether the operator is BETWEEN or NOT_BETWEEN |
+- **FilterType.EMAIL**: Tự động validation email
+- **FilterType.INTEGER**: Hỗ trợ validation min/max và BETWEEN operators
+- **FilterType.DATE**: Hỗ trợ date picker và date range
+- **FilterType.BOOLEAN**: Hỗ trợ checkbox input
+- **FilterType.STRING**: Hỗ trợ tất cả string operators
+
+### 3. Advanced Operators Support
+
+- **BETWEEN/NOT_BETWEEN**: Tự động chuyển đổi input thành range
+- **IN/NOT_IN**: Tự động enable multiple selection
+- **IS_EMPTY/IS_NOT_EMPTY**: Không cần input value
+- **BEGINS_WITH/ENDS_WITH**: Hỗ trợ pattern matching
+
+### 4. Dynamic Width Control
+
+Tất cả slots đều nhận `widthValueInput` prop để control width của input:
+
+```vue
+<template #customField="{ rule, widthValueInput }">
+  <el-input v-model="rule.value" :style="{ width: `${widthValueInput}px` }" />
+</template>
+```
+
+### 5. Enhanced Slot Props
+
+| Name              | Type               | Description                                    |
+| ----------------- | ------------------ | ---------------------------------------------- |
+| `rule`            | `QueryBuilderRule` | Toàn bộ rule object với field, operator, value |
+| `operator`        | `string`           | Current operator của rule                      |
+| `value`           | `any`              | Current value của rule (alias cho rule.value)  |
+| `isBetween`       | `boolean`          | Có phải BETWEEN/NOT_BETWEEN operator không     |
+| `widthValueInput` | `number`           | Width được tính toán cho value input           |
+| `index`           | `number`           | Index của rule trong group                     |
 
 ### Dynamic Slots
 
-The component automatically generates slots based on the field names in your filters configuration. For example, if you have a filter with `field: 'name'`, you can use `#name` slot to customize its input.
+Component tự động tạo slots dựa trên field names trong filters configuration. Ví dụ, nếu bạn có filter với `field: 'name'`, bạn có thể sử dụng `#name` slot để customize input.
 
-Each slot receives the same props:
+Mỗi slot nhận các props:
 
-- `operator`: Current operator selected for the rule
-- `modelValue`: Current value of the rule (supports v-model)
-- `isBetween`: Boolean flag indicating if the operator is BETWEEN or NOT_BETWEEN
+- `rule`: Toàn bộ rule object với field, operator, value
+- `operator`: Current operator được chọn cho rule
+- `value`: Current value của rule (alias cho rule.value)
+- `isBetween`: Boolean flag chỉ ra operator có phải BETWEEN hoặc NOT_BETWEEN không
+- `widthValueInput`: Width được tính toán cho value input
+- `index`: Index của rule trong group
 
-When `isBetween` is true, the `modelValue` will be an array with two elements for the range values.
+Khi `isBetween` là true, `rule.value` sẽ là array với 2 elements cho range values.
+
+## Kết quả Query từ Demo
+
+Với cấu hình filters trong ví dụ, bạn có thể tạo ra các query phức tạp như:
+
+```json
+{
+  "condition": "AND",
+  "rules": [
+    {
+      "id": "uuid-1",
+      "field": "name",
+      "operator": "contains",
+      "value": "John"
+    },
+    {
+      "id": "uuid-2",
+      "field": "age",
+      "operator": "between",
+      "value": [18, 65]
+    },
+    {
+      "id": "uuid-3",
+      "field": "birthdate",
+      "operator": "greater",
+      "value": "1990-01-01"
+    },
+    {
+      "id": "uuid-4",
+      "field": "active",
+      "operator": "equal",
+      "value": true
+    },
+    {
+      "id": "uuid-5",
+      "field": "status",
+      "operator": "in",
+      "value": ["pending", "completed"]
+    }
+  ]
+}
+```
+
+Query này sẽ được convert thành:
+
+**SQL:**
+
+```sql
+name LIKE '%John%'
+AND age BETWEEN 18 AND 65
+AND birthdate > '1990-01-01'
+AND active = true
+AND status IN ('pending', 'completed')
+```
+
+**MongoDB:**
+
+```javascript
+{
+  $and: [
+    { name: { $regex: 'John', $options: 'i' } },
+    { age: { $gte: 18, $lte: 65 } },
+    { birthdate: { $gt: '1990-01-01' } },
+    { active: { $eq: true } },
+    { status: { $in: ['pending', 'completed'] } },
+  ]
+}
+```
 
 ## Development
 
@@ -523,27 +672,203 @@ npm run test:unit
 npm run lint
 ```
 
-## License
-
-MIT
-
-## Screenshot
-
-![Vue 3 QueryBuilder Screenshot](./screenshot.png)
-
-## Author
-
-Mạc Tân (Tanmv)
-
-Email: [tanmv@mpos.vn](mailto:tanmv@mpos.vn)
-
-FB: [Mạc Tân](https://facebook.com/mvt.hp.star)
-
-Telegram: [@tanmac](https://t.me/tanmac)
-
-Skype: [trai_12a1](skype:trai_12a1?chat)
-
 ## Examples
+
+### Complete Demo Example
+
+Đây là ví dụ đầy đủ từ file App.vue với tất cả các loại filter và custom slots:
+
+```vue
+<template>
+  <div class="app">
+    <h1>Vue 3 QueryBuilder Demo</h1>
+    <QueryBuilder v-model="rules" :filters="filters">
+      <!-- Custom email input -->
+      <template #email="{ rule, widthValueInput }">
+        <el-input
+          v-model="rule.value"
+          placeholder="Enter email"
+          clearable
+          :style="{ width: `${widthValueInput}px` }"
+        />
+      </template>
+
+      <!-- Custom age input with between support -->
+      <template #age="{ isBetween, rule, widthValueInput }">
+        <el-input-number
+          v-if="!isBetween"
+          v-model="rule.value"
+          :min="0"
+          :max="100"
+          clearable
+          :style="{ width: `${widthValueInput}px` }"
+        />
+        <div v-else style="display: flex; align-items: center; gap: 10px">
+          <el-input-number
+            v-model="(rule.value as number[])[0]"
+            :min="0"
+            :max="100"
+            clearable
+            :style="{ width: `${widthValueInput}px` }"
+          />
+          <span>and</span>
+          <el-input-number
+            v-model="(rule.value as number[])[1]"
+            :min="0"
+            :max="100"
+            clearable
+            :style="{ width: `${widthValueInput}px` }"
+          />
+        </div>
+      </template>
+
+      <!-- Custom date picker -->
+      <template #birthdate="{ rule, isBetween, widthValueInput }">
+        <el-date-picker
+          v-model="rule.value"
+          :type="isBetween ? 'daterange' : 'date'"
+          placeholder="Select date"
+          range-separator="To"
+          start-placeholder="Start date"
+          end-placeholder="End date"
+          clearable
+          :style="{ width: `${widthValueInput}px` }"
+        />
+      </template>
+
+      <!-- Custom checkbox for boolean -->
+      <template #active="{ rule, widthValueInput }">
+        <el-checkbox v-model="rule.value" :style="{ width: `${widthValueInput}px` }"
+          >Active/Inactive</el-checkbox
+        >
+      </template>
+
+      <!-- Custom select dropdown -->
+      <template #status="{ rule, widthValueInput }">
+        <el-select
+          v-model="rule.value"
+          placeholder="Select status"
+          :multiple="[Operator.IN, Operator.NOT_IN].includes(rule.operator)"
+          clearable
+          :style="{ width: `${widthValueInput}px` }"
+        >
+          <el-option label="Pending" value="pending" />
+          <el-option label="Completed" value="completed" />
+        </el-select>
+      </template>
+    </QueryBuilder>
+
+    <!-- Display current rules -->
+    <div class="rules-display">
+      <h3>Current Rules:</h3>
+      <pre>{{ JSON.stringify(rules, null, 2) }}</pre>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import QueryBuilder from './components/QueryBuilder.vue'
+import type { QueryBuilderGroup, QueryBuilderFilter } from './types/querybuilder'
+import { FilterType, Operator } from './types/querybuilder'
+
+const rules = ref<QueryBuilderGroup>({
+  condition: 'AND',
+  rules: [],
+})
+
+// Comprehensive filter configuration
+const filters: QueryBuilderFilter[] = [
+  {
+    field: 'name',
+    label: 'Name',
+    type: FilterType.STRING,
+    operators: [
+      Operator.EQUAL,
+      Operator.NOT_EQUAL,
+      Operator.CONTAINS,
+      Operator.NOT_CONTAINS,
+      Operator.BEGINS_WITH,
+      Operator.NOT_BEGINS_WITH,
+      Operator.ENDS_WITH,
+      Operator.NOT_ENDS_WITH,
+      Operator.IS_EMPTY,
+      Operator.IS_NOT_EMPTY,
+    ],
+  },
+  {
+    field: 'email',
+    label: 'Email',
+    type: FilterType.EMAIL,
+    operators: [Operator.EQUAL, Operator.NOT_EQUAL, Operator.CONTAINS, Operator.NOT_CONTAINS],
+    input: 'email',
+  },
+  {
+    field: 'age',
+    label: 'Age',
+    type: FilterType.INTEGER,
+    validation: {
+      min: 0,
+      max: 100,
+    },
+    operators: [
+      Operator.EQUAL,
+      Operator.NOT_EQUAL,
+      Operator.GREATER,
+      Operator.GREATER_OR_EQUAL,
+      Operator.LESS,
+      Operator.LESS_OR_EQUAL,
+      Operator.BETWEEN,
+      Operator.NOT_BETWEEN,
+    ],
+  },
+  {
+    field: 'birthdate',
+    label: 'Birth Date',
+    type: FilterType.DATE,
+    input: 'date',
+    validation: {
+      format: 'YYYY-MM-DD',
+    },
+    operators: [
+      Operator.EQUAL,
+      Operator.NOT_EQUAL,
+      Operator.GREATER,
+      Operator.GREATER_OR_EQUAL,
+      Operator.LESS,
+      Operator.LESS_OR_EQUAL,
+      Operator.BETWEEN,
+      Operator.NOT_BETWEEN,
+    ],
+  },
+  {
+    field: 'active',
+    label: 'Active',
+    type: FilterType.BOOLEAN,
+    input: 'checkbox',
+  },
+  {
+    field: 'status',
+    label: 'Status',
+    type: FilterType.STRING,
+    input: 'select',
+    value: 'pending', // Giá trị mặc định
+    operators: [Operator.EQUAL, Operator.NOT_EQUAL, Operator.IN, Operator.NOT_IN],
+  },
+]
+</script>
+
+<style lang="scss" scoped>
+pre {
+  padding: 20px;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+</style>
+```
 
 ### Basic Usage with Max Depth
 
@@ -595,3 +920,23 @@ const onQueryChange = (newQuery: QueryBuilderRule | QueryBuilderGroup) => {
 - `maxDepth={0}`: Unlimited nesting (default)
 - `maxDepth={1}`: Disable nested groups completely
 - `maxDepth={n}`: Limit nesting to n levels (where n is a positive number)
+
+## License
+
+MIT
+
+## Screenshot
+
+![Vue 3 QueryBuilder Screenshot](./screenshot.png)
+
+## Author
+
+Mạc Tân (Tanmv)
+
+Email: [tanmv@mpos.vn](mailto:tanmv@mpos.vn)
+
+FB: [Mạc Tân](https://facebook.com/mvt.hp.star)
+
+Telegram: [@tanmac](https://t.me/tanmac)
+
+Skype: [trai_12a1](skype:trai_12a1?chat)
