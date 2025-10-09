@@ -1,45 +1,55 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <template>
   <div class="query-builder" data-test="query-builder">
     <el-card>
       <div class="group">
+        <!-- group header -->
         <div class="group-header">
-          <div class="condition-switch">
-            <el-switch
-              v-model="isAndCondition"
-              active-text="AND"
-              inactive-text="OR"
-              @change="onConditionChange"
-              data-test="condition-switch"
-            />
+          <div class="group-header-left">
+            <div class="condition-switch">
+              <el-switch
+                v-model="isAndCondition"
+                :active-text="labelAnd"
+                :inactive-text="labelOr"
+                @change="onConditionChange"
+                data-test="condition-switch"
+              />
+            </div>
+            <el-button
+              type="primary"
+              :icon="Plus"
+              @click="addRule"
+              :disabled="!canAddRule"
+              data-test="add-rule"
+            >
+              {{ labelAddRule }}
+            </el-button>
+            <el-button
+              type="primary"
+              :icon="FolderAdd"
+              @click="addGroup"
+              :disabled="!canAddGroup"
+              data-test="add-group"
+            >
+              {{ labelAddGroup }}
+            </el-button>
+            <el-button
+              type="danger"
+              :icon="Delete"
+              v-if="!isRoot"
+              @click="removeGroup"
+              data-test="remove-group"
+            >
+              {{ labelRemoveGroup }}
+            </el-button>
           </div>
-          <el-button
-            type="primary"
-            :icon="Plus"
-            @click="addRule"
-            :disabled="!canAddRule"
-            data-test="add-rule"
-          >
-            {{ t('queryBuilder.addRule') }}
-          </el-button>
-          <el-button
-            type="primary"
-            :icon="FolderAdd"
-            @click="addGroup"
-            :disabled="!canAddGroup"
-            data-test="add-group"
-          >
-            {{ t('queryBuilder.addGroup') }}
-          </el-button>
-          <el-button
-            type="danger"
-            :icon="Delete"
-            v-if="!isRoot"
-            @click="removeGroup"
-            data-test="remove-group"
-          >
-            {{ t('queryBuilder.removeGroup') }}
-          </el-button>
+          <div class="group-header-right">
+            <div v-show="isRoot">(version: {{ packageJson.version }})</div>
+          </div>
         </div>
+        <!-- end group header -->
+
+        <!-- rules -->
         <div class="rules">
           <div
             v-for="(rule, index) in group.rules"
@@ -47,6 +57,7 @@
             class="rule"
             :data-test="'rule-' + index"
           >
+            <!-- Group rule -->
             <template v-if="isGroup(rule)">
               <QueryBuilder
                 v-model="group.rules[index]"
@@ -60,13 +71,18 @@
                 </template>
               </QueryBuilder>
             </template>
+            <!-- end Group rule -->
+
+            <!-- Rule -->
             <template v-else>
               <div class="rule-container">
+                <!-- Field select -->
                 <el-select
                   v-model="rule.field"
                   class="field-select"
                   @change="onFieldChange(rule)"
                   data-test="field-select"
+                  :style="{ width: `${widthFieldSelect}px` }"
                 >
                   <el-option
                     v-for="filter in getAvailableFilters(rule.field)"
@@ -76,11 +92,14 @@
                     :data-test="`${filter.field}-option`"
                   />
                 </el-select>
+                <!-- end Field select -->
+                <!-- Operator select -->
                 <el-select
                   v-model="rule.operator"
                   @change="onOperatorChange(rule)"
                   class="operator-select"
                   data-test="operator-select"
+                  :style="{ width: `${widthOperatorSelect}px` }"
                 >
                   <el-option
                     v-for="operator in getOperators(rule.field)"
@@ -90,116 +109,41 @@
                     :data-test="`${operator}-option`"
                   />
                 </el-select>
-                <template v-if="$slots[rule.field]">
-                  <slot
-                    :name="rule.field"
-                    :operator="rule.operator"
-                    :modelValue="rule.value"
-                    :onUpdate:modelValue="
+                <!-- end Operator select -->
+                <!-- Value input -->
+                <slot
+                  :name="rule.field"
+                  :operator="rule.operator"
+                  :value="rule.value"
+                  :isBetween="[Operator.BETWEEN, Operator.NOT_BETWEEN].includes(rule.operator)"
+                  :rule="rule"
+                  :index="index"
+                  :widthValueInput="widthValueInput"
+                >
+                  <el-input
+                    v-model="rule.value"
+                    :style="{ width: `${widthValueInput}px` }"
+                    :placeholder="labelEnterValue"
+                    @update:modelValue="
                       (val: QueryBuilderValue) => updateRuleValue(rule, val, index)
                     "
-                    :isBetween="
-                      rule.operator === Operator.BETWEEN || rule.operator === Operator.NOT_BETWEEN
-                    "
                   />
-                </template>
-                <template v-else>
-                  <template
-                    v-if="
-                      rule.operator === Operator.BETWEEN || rule.operator === Operator.NOT_BETWEEN
-                    "
-                  >
-                    <div class="between-inputs" data-test="between-inputs">
-                      <template
-                        v-if="
-                          getFilter(rule.field)?.type === FilterType.NUMBER ||
-                          getFilter(rule.field)?.type === FilterType.INTEGER
-                        "
-                      >
-                        <el-input-number
-                          v-model="(rule.value as number[])[0]"
-                          :controls="false"
-                          :placeholder="t('queryBuilder.from')"
-                          @update:modelValue="(val: number) => updateRuleValue(rule, val, 0)"
-                          data-test="value-input-from"
-                        />
-                        <span>{{ t('queryBuilder.and') }}</span>
-                        <el-input-number
-                          v-model="(rule.value as number[])[1]"
-                          :controls="false"
-                          :placeholder="t('queryBuilder.to')"
-                          @update:modelValue="(val: number) => updateRuleValue(rule, val, 1)"
-                          data-test="value-input-to"
-                        />
-                      </template>
-                      <template v-else-if="getFilter(rule.field)?.type === FilterType.DATE">
-                        <el-date-picker
-                          v-model="(rule.value as Date[])[0]"
-                          type="date"
-                          :placeholder="t('queryBuilder.from')"
-                          @update:modelValue="(val: Date) => updateRuleValue(rule, val, 0)"
-                          data-test="value-input-from"
-                        />
-                        <span>{{ t('queryBuilder.and') }}</span>
-                        <el-date-picker
-                          v-model="(rule.value as Date[])[1]"
-                          type="date"
-                          :placeholder="t('queryBuilder.to')"
-                          @update:modelValue="(val: Date) => updateRuleValue(rule, val, 1)"
-                          data-test="value-input-to"
-                        />
-                      </template>
-                      <template v-else>
-                        <el-input
-                          v-model="(rule.value as string[])[0]"
-                          :placeholder="t('queryBuilder.from')"
-                          @update:modelValue="(val: string) => updateRuleValue(rule, val, 0)"
-                          data-test="value-input-from"
-                        />
-                        <span>{{ t('queryBuilder.and') }}</span>
-                        <el-input
-                          v-model="(rule.value as string[])[1]"
-                          :placeholder="t('queryBuilder.to')"
-                          @update:modelValue="(val: string) => updateRuleValue(rule, val, 1)"
-                          data-test="value-input-to"
-                        />
-                      </template>
-                      <div v-if="rule.error" class="error-message">{{ rule.error }}</div>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <component
-                      :is="getInputComponent(rule.field)"
-                      v-model="rule.value"
-                      v-bind="getInputProps(rule.field)"
-                      class="value-input"
-                      placeholder="Please input"
-                      data-test="value-input"
-                      @update:modelValue="
-                        (val: QueryBuilderValue) => updateRuleValue(rule, val, index)
-                      "
-                    >
-                      <template v-if="getFilter(rule.field)?.input === 'select'">
-                        <el-option
-                          v-for="option in getFilter(rule.field)?.values"
-                          :key="option.value"
-                          :label="option.text"
-                          :value="option.value"
-                        />
-                      </template>
-                    </component>
-                  </template>
-                </template>
+                </slot>
+                <!-- end Value input -->
+                <!-- Remove rule -->
                 <el-button
                   type="danger"
                   :icon="Delete"
                   @click="removeRule(index)"
                   data-test="remove-rule"
                 />
+                <!-- end Remove rule -->
               </div>
             </template>
+            <!-- end Rule -->
           </div>
         </div>
+        <!-- end rules -->
       </div>
     </el-card>
   </div>
@@ -214,43 +158,66 @@ import type {
   QueryBuilderFilter,
   QueryBuilderValue,
 } from '../types/querybuilder'
-import { Operator, OperatorText, FilterType } from '../types/querybuilder'
-import dayjs from 'dayjs'
-import { useI18n } from 'vue-i18n'
+import { Operator, OperatorText } from '../types/querybuilder'
+import packageJson from '../../package.json'
 
 interface Props {
   modelValue: QueryBuilderGroup | QueryBuilderRule
   filters: QueryBuilderFilter[]
   isRoot?: boolean
-  language?: string
   maxDepth?: number
+  labelAddRule?: string
+  labelAddGroup?: string
+  labelRemoveGroup?: string
+  labelFrom?: string
+  labelTo?: string
+  labelAnd?: string
+  labelOr?: string
+  labelSelectField?: string
+  labelSelectOperator?: string
+  labelEnterValue?: string
+  labelRemoveRule?: string
+  labelCondition?: string
+  widthFieldSelect?: number
+  widthOperatorSelect?: number
+  widthValueInput?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isRoot: true,
-  language: 'vi',
+  labelAddRule: 'Add Rule',
+  labelAddGroup: 'Add Group',
+  labelRemoveGroup: 'Remove Group',
+  labelFrom: 'From',
+  labelTo: 'To',
+  labelAnd: 'And',
+  labelOr: 'Or',
+  labelSelectField: 'Select Field',
+  labelSelectOperator: 'Select Operator',
+  labelEnterValue: 'Enter Value',
+  labelRemoveRule: 'Remove Rule',
+  labelCondition: 'Condition',
+  widthFieldSelect: 200,
+  widthOperatorSelect: 180,
+  widthValueInput: 250,
   maxDepth: 0,
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: QueryBuilderGroup | QueryBuilderRule]
-  remove: []
+  (e: 'update:modelValue', value: QueryBuilderGroup | QueryBuilderRule): void
+  (e: 'remove'): void
 }>()
 
-const { t, locale } = useI18n()
-
-// Set language from prop
-watch(
-  () => props.language,
-  (newLang) => {
-    locale.value = newLang
-  },
-  { immediate: true },
-)
+// Map để lưu trữ operator trước đó của mỗi rule
+const previousOperators = new Map<string, Operator>()
 
 const group = computed<QueryBuilderGroup>(() => {
   return props.modelValue as QueryBuilderGroup
 })
+
+const isGroup = (rule: QueryBuilderRule | QueryBuilderGroup): rule is QueryBuilderGroup => {
+  return 'condition' in rule
+}
 
 watch(
   () => group.value.rules,
@@ -280,8 +247,39 @@ const onConditionChange = (value: boolean) => {
   emit('update:modelValue', group.value)
 }
 
-const isGroup = (rule: QueryBuilderRule | QueryBuilderGroup): rule is QueryBuilderGroup => {
-  return 'condition' in rule
+const onFieldChange = (rule: QueryBuilderRule) => {
+  rule.operator = getOperators(rule.field)[0]
+  if ([Operator.BETWEEN, Operator.NOT_BETWEEN].includes(rule.operator)) {
+    rule.value = [undefined, undefined]
+  } else {
+    rule.value = undefined
+  }
+  emit('update:modelValue', group.value)
+}
+
+const onOperatorChange = (rule: QueryBuilderRule) => {
+  // Lấy operator trước đó từ Map
+  const previousOperator = previousOperators.get(rule.id)
+
+  // Kiểm tra xem có sự chuyển đổi giữa các group không
+  const isBetweenGroup = [Operator.BETWEEN, Operator.NOT_BETWEEN].includes(rule.operator)
+  const wasBetweenGroup = previousOperator
+    ? [Operator.BETWEEN, Operator.NOT_BETWEEN].includes(previousOperator)
+    : false
+
+  // Chỉ reset value khi có sự chuyển đổi giữa các group khác nhau
+  if (isBetweenGroup !== wasBetweenGroup) {
+    if (isBetweenGroup) {
+      rule.value = [undefined, undefined]
+    } else {
+      rule.value = undefined
+    }
+  }
+
+  // Lưu operator hiện tại làm previous cho lần sau
+  previousOperators.set(rule.id, rule.operator)
+
+  emit('update:modelValue', { ...group.value })
 }
 
 const getOccurrences = (field: string): number => {
@@ -312,50 +310,7 @@ const canAddRule = computed(() => {
 
 const getOperators = (field: string): Operator[] => {
   const filter = getFilter(field)
-  return (
-    filter?.operators || [
-      Operator.EQUAL,
-      Operator.NOT_EQUAL,
-      Operator.CONTAINS,
-      Operator.NOT_CONTAINS,
-      Operator.BEGINS_WITH,
-      Operator.ENDS_WITH,
-    ]
-  )
-}
-
-const getInputComponent = (field: string) => {
-  const filter = getFilter(field)
-  if (!filter) return 'el-input'
-
-  switch (filter.type) {
-    case FilterType.NUMBER:
-    case FilterType.INTEGER:
-      return 'el-input-number'
-    case FilterType.DATE:
-      return 'el-date-picker'
-    default:
-      return filter.input === 'select' ? 'el-select' : 'el-input'
-  }
-}
-
-const getInputProps = (field: string) => {
-  const filter = getFilter(field)
-  if (!filter) return {}
-
-  const props: Record<string, unknown> = {}
-
-  switch (filter.type) {
-    case FilterType.NUMBER:
-    case FilterType.INTEGER:
-      props.controls = false
-      break
-    case FilterType.DATE:
-      props.type = 'date'
-      break
-  }
-
-  return props
+  return filter?.operators || [Operator.EQUAL]
 }
 
 const updateRuleValue = (rule: QueryBuilderRule, value: QueryBuilderValue, index?: number) => {
@@ -378,13 +333,25 @@ const addRule = () => {
 
   if (availableFilter) {
     const operator = getOperators(availableFilter.field)[0]
+    let defaultValue: QueryBuilderValue
+
+    if ([Operator.BETWEEN, Operator.NOT_BETWEEN].includes(operator)) {
+      defaultValue = [undefined, undefined]
+    } else {
+      defaultValue = availableFilter.value !== undefined ? availableFilter.value : undefined
+    }
+
     const rule: QueryBuilderRule = {
       id: crypto.randomUUID(),
       field: availableFilter.field,
       operator: operator,
-      value: operator === Operator.BETWEEN || operator === Operator.NOT_BETWEEN ? [0, 0] : '',
+      value: defaultValue,
       error: undefined,
     }
+
+    // Khởi tạo previous operator cho rule mới
+    previousOperators.set(rule.id, operator)
+
     group.value.rules.push(rule)
     emit('update:modelValue', group.value)
   }
@@ -400,97 +367,17 @@ const addGroup = () => {
 }
 
 const removeRule = (index: number) => {
+  const rule = group.value.rules[index]
+  if (!isGroup(rule)) {
+    // Xóa previous operator khỏi Map
+    previousOperators.delete(rule.id)
+  }
   group.value.rules.splice(index, 1)
   emit('update:modelValue', group.value)
 }
 
 const removeGroup = () => {
   emit('remove')
-}
-
-const onFieldChange = (rule: QueryBuilderRule) => {
-  const operator = getOperators(rule.field)[0]
-  rule.operator = operator
-  if (operator === Operator.BETWEEN || operator === Operator.NOT_BETWEEN) {
-    rule.value = [0, 0]
-  } else {
-    rule.value = ''
-  }
-  validateBetweenValue(rule)
-  emit('update:modelValue', group.value)
-}
-
-const onOperatorChange = (rule: QueryBuilderRule) => {
-  if (rule.operator === Operator.BETWEEN || rule.operator === Operator.NOT_BETWEEN) {
-    rule.value = [null, null]
-  } else {
-    rule.value = null
-  }
-  emit('update:modelValue', { ...group.value })
-}
-
-const validateBetweenValue = (rule: QueryBuilderRule) => {
-  if (!Array.isArray(rule.value)) {
-    rule.value = ['' as string | number | boolean | Date, '' as string | number | boolean | Date]
-  }
-
-  const filter = getFilter(rule.field)
-  const fromValue = (rule.value as (string | number | boolean | Date)[])[0]
-  const toValue = (rule.value as (string | number | boolean | Date)[])[1]
-
-  // Validate required
-  if (!fromValue || !toValue) {
-    rule.error = 'Both values are required'
-    return
-  }
-
-  // Validate number type
-  if (filter?.type === FilterType.NUMBER || filter?.type === FilterType.INTEGER) {
-    const min = filter.validation?.min
-    const max = filter.validation?.max
-    const fromNum = Number(fromValue)
-    const toNum = Number(toValue)
-
-    if (min !== undefined && fromNum < min) {
-      rule.error = `From value must be greater than or equal to ${min}`
-      return
-    }
-
-    if (max !== undefined && toNum > max) {
-      rule.error = `To value must be less than or equal to ${max}`
-      return
-    }
-
-    if (fromNum > toNum) {
-      rule.error = 'From value must be less than or equal to To value'
-      return
-    }
-  }
-
-  // Validate date type
-  if (filter?.type === FilterType.DATE) {
-    const format = filter.validation?.format || 'YYYY-MM-DD'
-    const fromDate = dayjs(fromValue as string | Date, format)
-    const toDate = dayjs(toValue as string | Date, format)
-
-    if (!fromDate.isValid()) {
-      rule.error = 'From date is invalid'
-      return
-    }
-
-    if (!toDate.isValid()) {
-      rule.error = 'To date is invalid'
-      return
-    }
-
-    if (fromDate.isAfter(toDate)) {
-      rule.error = 'From date must be before or equal to To date'
-      return
-    }
-  }
-
-  rule.error = undefined
-  emit('update:modelValue', group.value)
 }
 
 const canAddGroup = computed(() => {
@@ -514,13 +401,13 @@ const canAddGroup = computed(() => {
 })
 </script>
 
-<style>
+<style scoped>
 .query-builder {
-  margin: 1rem 0;
+  margin: 0;
 }
 
 .group {
-  padding: 1rem;
+  padding: 0;
 }
 
 .group-header {
@@ -528,6 +415,18 @@ const canAddGroup = computed(() => {
   gap: 1rem;
   margin-bottom: 1rem;
   align-items: center;
+}
+
+.group-header-left {
+  display: flex;
+  gap: 1rem;
+}
+
+.group-header-right {
+  display: flex;
+  gap: 1rem;
+  margin-left: auto;
+  color: #999;
 }
 
 .condition-switch {
@@ -554,22 +453,6 @@ const canAddGroup = computed(() => {
 }
 
 .operator-select {
-  width: 120px !important;
-  min-width: 120px !important;
-  max-width: 120px !important;
-}
-
-.value-input {
-  flex: 1;
-}
-
-.between-inputs {
-  display: flex;
-  gap: 1rem;
-  flex: 1;
-}
-
-.between-input {
   width: 150px !important;
   min-width: 150px !important;
   max-width: 150px !important;

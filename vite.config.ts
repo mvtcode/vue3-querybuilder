@@ -19,13 +19,12 @@ export default defineConfig({
       fileName: (format) => `vue3-querybuilder.${format}.js`,
     },
     rollupOptions: {
-      external: ['vue', 'element-plus', '@element-plus/icons-vue', 'vue-i18n'],
+      external: ['vue', 'element-plus', '@element-plus/icons-vue'],
       output: {
         globals: {
           vue: 'Vue',
           'element-plus': 'ElementPlus',
           '@element-plus/icons-vue': 'ElementPlusIconsVue',
-          'vue-i18n': 'VueI18n',
         },
         assetFileNames: (assetInfo) => {
           if (assetInfo.name === 'style.css') {

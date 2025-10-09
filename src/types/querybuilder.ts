@@ -4,6 +4,7 @@ export enum FilterType {
   INTEGER = 'integer',
   DATE = 'date',
   BOOLEAN = 'boolean',
+  EMAIL = 'email',
 }
 
 export enum Operator {
@@ -53,8 +54,8 @@ export type QueryBuilderValue =
   | number
   | boolean
   | Date
-  | null
-  | (string | number | boolean | Date | null)[]
+  | undefined
+  | (string | number | boolean | Date | undefined)[]
 
 export interface QueryBuilderRule {
   id: string
@@ -74,7 +75,14 @@ export interface QueryBuilderFilter {
   label: string
   type: FilterType
   operators?: Operator[]
-  input?: 'text' | 'select' | 'date' | 'radio' | 'number'
+  input?: 'text' | 'select' | 'date' | 'radio' | 'number' | 'email' | 'checkbox'
+  value?:
+    | string
+    | number
+    | boolean
+    | Date
+    | undefined
+    | (string | number | boolean | Date | undefined)[]
   values?: { value: string | number | boolean; text: string }[]
   maxOccurrences?: number
   validation?: {
