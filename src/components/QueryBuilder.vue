@@ -1,7 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <template>
   <div class="query-builder" data-test="query-builder">
-    <el-card>
+    <el-card shadow="never">
       <div class="group">
         <!-- group header -->
         <div class="group-header">
@@ -21,6 +21,7 @@
               @click="addRule"
               :disabled="!canAddRule"
               data-test="add-rule"
+              plain
             >
               {{ labelAddRule }}
             </el-button>
@@ -30,6 +31,7 @@
               @click="addGroup"
               :disabled="!canAddGroup"
               data-test="add-group"
+              plain
             >
               {{ labelAddGroup }}
             </el-button>
@@ -39,6 +41,7 @@
               v-if="!isRoot"
               @click="removeGroup"
               data-test="remove-group"
+              plain
             >
               {{ labelRemoveGroup }}
             </el-button>
@@ -136,6 +139,8 @@
                   :icon="Delete"
                   @click="removeRule(index)"
                   data-test="remove-rule"
+                  plain
+                  circle
                 />
                 <!-- end Remove rule -->
               </div>
