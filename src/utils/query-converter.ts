@@ -1,5 +1,11 @@
-import type { QueryBuilderGroup, QueryBuilderRule } from '../types/querybuilder'
+import {
+  FilterType,
+  QueryBuilderFilter,
+  QueryBuilderGroup,
+  QueryBuilderRule,
+} from '../types/querybuilder'
 import { Operator } from '../types/querybuilder'
+import dayjs from 'dayjs'
 
 const operatorToSQL = {
   [Operator.EQUAL]: '=',
@@ -227,7 +233,7 @@ const formatValue = (value: unknown): string => {
   return String(value)
 }
 
-const convertToSql = (rule: QueryBuilderRule): string => {
+export const convertToSql = (rule: QueryBuilderRule): string => {
   const { field, operator } = rule
   const value = rule.value as unknown
   const fieldName = `\`${field}\``
@@ -278,7 +284,7 @@ const convertToSql = (rule: QueryBuilderRule): string => {
   }
 }
 
-const convertToMongo = (rule: QueryBuilderRule): Record<string, unknown> => {
+export const convertToMongo = (rule: QueryBuilderRule): Record<string, unknown> => {
   const { field, operator } = rule
   const value = rule.value as unknown
 
@@ -335,4 +341,198 @@ const convertToMongo = (rule: QueryBuilderRule): Record<string, unknown> => {
   }
 }
 
-export { convertToSql, convertToMongo }
+const toString = (v: any) => `'''${v}'''`
+
+const mapOperator: Record<Operator, string> = {
+  [Operator.EQUAL]: '==',
+  [Operator.NOT_EQUAL]: '!=',
+  [Operator.CONTAINS]: 'LIKE',
+  [Operator.NOT_CONTAINS]: 'NLIKE',
+  [Operator.BEGINS_WITH]: 'LIKE%',
+  [Operator.NOT_BEGINS_WITH]: 'NLIKE%',
+  [Operator.ENDS_WITH]: '%LIKE',
+  [Operator.NOT_ENDS_WITH]: 'N%LIKE',
+  [Operator.GREATER]: '>',
+  [Operator.GREATER_OR_EQUAL]: '>=',
+  [Operator.LESS]: '<',
+  [Operator.LESS_OR_EQUAL]: '<=',
+  [Operator.IN]: 'IN',
+  [Operator.NOT_IN]: 'NIN',
+  [Operator.BETWEEN]: 'BETWEEN',
+  [Operator.NOT_BETWEEN]: 'NOTBETWEEN',
+  [Operator.IS_EMPTY]: 'IS_NULL',
+  [Operator.IS_NOT_EMPTY]: 'IS_NOT_NULL',
+}
+
+const formatDate = (v: any, format: string) => dayjs(v).format(format)
+
+const toDate = (field: string, v: any, operator: Operator): string => {
+  if (dayjs(v).isValid()) {
+    const date = formatDate(v, 'YYYY-MM-DD')
+    switch (operator) {
+      case Operator.LESS_OR_EQUAL:
+        return `{${field}} <= #${date} 23:59:59#`
+      case Operator.LESS:
+        return `{${field}} < #${date}#`
+      case Operator.GREATER:
+        return `{${field}} > #${date} 23:59:59#`
+      case Operator.GREATER_OR_EQUAL:
+        return `{${field}} >= #${date}#`
+      case Operator.NOT_EQUAL:
+        return `({${field}} < #${date}# OR {${field}} > #${date} 23:59:59#)`
+      default:
+        return `({${field}} >= #${date}# AND {${field}} <= #${date} 23:59:59#)`
+    }
+  } else if (v.length === 2) {
+    const date1 = formatDate(v[0], 'YYYY-MM-DD')
+    const date2 = formatDate(v[1], 'YYYY-MM-DD')
+    switch (operator) {
+      case Operator.BETWEEN:
+        return `({${field}} >= #${date1}# AND {${field}} <= #${date2} 23:59:59#)`
+      case Operator.NOT_BETWEEN:
+        return `({${field}} < #${date1}# OR {${field}} > #${date2} 23:59:59#)`
+      default:
+        return ''
+    }
+  }
+
+  return ''
+}
+
+const toDateRange = (field: string, v: Date[], operator: Operator) => {
+  if (v.length < 2) return ''
+
+  switch (operator) {
+    case Operator.BETWEEN:
+      return `({${field}} >= #${formatDate(v[0], 'YYYY-MM-DD')}# AND {${field}} <= #${formatDate(v[1], 'YYYY-MM-DD')} 23:59:59#)`
+    case Operator.NOT_BETWEEN:
+      return `({${field}} < #${formatDate(v[0], 'YYYY-MM-DD')}# OR {${field}} > #${formatDate(v[1], 'YYYY-MM-DD')} 23:59:59#)`
+    default:
+      return ''
+  }
+}
+
+export const convertToMnpQuery = (
+  group: QueryBuilderGroup,
+  filters: QueryBuilderFilter[],
+): string => {
+  const mapFieldDataType: Record<string, FilterType> = filters.reduce(
+    (map, filter) => {
+      map[filter.field] = filter.type
+      return map
+    },
+    {} as Record<string, FilterType>,
+  )
+
+  const results: string[] = []
+  const condition = group.condition
+
+  for (const rule of group.rules) {
+    if ('condition' in rule) {
+      results.push(`(${convertToMnpQuery(rule as QueryBuilderGroup, filters)})`)
+    } else {
+      const field = rule.field
+      const operator = rule.operator
+      const value = rule.value
+      const dataType = mapFieldDataType[field]
+      const operatorMnp = mapOperator[operator]
+
+      if (
+        typeof value === 'undefined' &&
+        ![Operator.IS_EMPTY, Operator.IS_NOT_EMPTY].includes(operator)
+      )
+        continue
+
+      if ([Operator.IS_EMPTY, Operator.IS_NOT_EMPTY].includes(operator)) {
+        results.push(`{${field}} ${operatorMnp}`)
+        continue
+      }
+
+      switch (dataType) {
+        case FilterType.STRING:
+        case FilterType.EMAIL:
+          if (Array.isArray(value)) {
+            value.length &&
+              results.push(`{${field}} ${operatorMnp} ['''${value?.join("''', '''")}''']`)
+          } else {
+            results.push(`{${field}} ${operatorMnp} ${toString(value)}`)
+          }
+          break
+        case FilterType.BOOLEAN:
+          results.push(`{${field}} ${operatorMnp} ${value}`)
+          break
+        case FilterType.INTEGER:
+        case FilterType.NUMBER:
+          switch (operator) {
+            case Operator.IN:
+            case Operator.NOT_IN:
+              results.push(`{${field}} ${operatorMnp} [${(value as number[])?.join(', ')}]`)
+              break
+            case Operator.BETWEEN:
+            case Operator.NOT_BETWEEN:
+              if (Array.isArray(value) && !value.includes(undefined)) {
+                results.push(
+                  `{${field}} ${operatorMnp} ${(value as number[])?.[0]} AND ${(value as number[])?.[1]}`,
+                )
+              }
+              break
+            default:
+              results.push(`{${field}} ${operatorMnp} ${value}`)
+          }
+          break
+        case FilterType.DATE:
+          switch (operator) {
+            case Operator.BETWEEN:
+            case Operator.NOT_BETWEEN:
+              if (Array.isArray(value) && !value.includes(undefined)) {
+                results.push(toDateRange(field, value as Date[], operator))
+              }
+              break
+            default:
+              results.push(toDate(field, value, operator))
+          }
+          break
+        // case FilterType.TIME:
+        //   if (Array.isArray(value)) {
+        //     value.length &&
+        //       results.push(
+        //         `({${field}} ${operatorMnp} #${dayjs(value[0] as Date).format('YYYY-MM-DD')}# AND #${dayjs(value[1] as Date).format('YYYY-MM-DD')}#)`,
+        //       )
+        //   } else {
+        //     results.push(`{${field}} ${operatorMnp} #${dayjs(value as Date).format('YYYY-MM-DD')}#`)
+        //   }
+        //   break
+        case FilterType.DATETIME:
+          // if (Array.isArray(value)) {
+          //   value.length &&
+          //     results.push(
+          //       `({${field}} ${operatorMnp} #${dayjs(value[0] as Date).format('YYYY-MM-DD HH:mm:ss')}# AND #${dayjs(value[1] as Date).format('YYYY-MM-DD HH:mm:ss')}#)`,
+          //     )
+          // } else {
+          //   results.push(
+          //     `{${field}} ${operatorMnp} #${dayjs(value as Date).format('YYYY-MM-DD HH:mm:ss')}#`,
+          //   )
+          // }
+          switch (operator) {
+            case Operator.BETWEEN:
+            case Operator.NOT_BETWEEN:
+              if (Array.isArray(value) && !value.includes(undefined)) {
+                results.push(
+                  `({${field}} ${operatorMnp} #${formatDate(value[0] as Date, 'YYYY-MM-DD HH:mm:ss')}# AND #${formatDate(value[1] as Date, 'YYYY-MM-DD HH:mm:ss')}#)`,
+                )
+              }
+              break
+            default:
+              results.push(
+                `{${field}} ${operatorMnp} #${dayjs(value as Date).format('YYYY-MM-DD HH:mm:ss')}#`,
+              )
+          }
+          break
+        default:
+          results.push(`{${field}} ${operatorMnp}`)
+      }
+    }
+  }
+
+  return results.join(` ${condition} `)
+}

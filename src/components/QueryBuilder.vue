@@ -123,6 +123,7 @@
                   :index="index"
                   :widthValueInput="widthValueInput"
                 >
+                  <!-- todo: implement default input each data type -->
                   <el-input
                     v-model="rule.value"
                     :style="{ width: `${widthValueInput}px` }"
@@ -131,6 +132,7 @@
                       (val: QueryBuilderValue) => updateRuleValue(rule, val, index)
                     "
                   />
+                  <!-- todo: end implement default input each data type -->
                 </slot>
                 <!-- end Value input -->
                 <!-- Remove rule -->

@@ -3,6 +3,8 @@ export enum FilterType {
   NUMBER = 'number',
   INTEGER = 'integer',
   DATE = 'date',
+  // TIME = 'time',
+  DATETIME = 'datetime',
   BOOLEAN = 'boolean',
   EMAIL = 'email',
 }
