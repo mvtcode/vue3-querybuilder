@@ -6,20 +6,17 @@
     "emitDeclarationOnly": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "noEmit": false
+    "noEmit": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": false
   },
-  "include": [
-    "src/index.ts",
-    "src/components/**/*",
-    "src/types/**/*",
-    "src/utils/**/*",
-    "src/i18n/**/*"
-  ],
+  "include": ["src/index.ts", "src/types/**/*", "src/utils/**/*"],
   "exclude": [
     "src/**/__tests__/*",
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
     "src/App.vue",
-    "src/main.ts"
+    "src/main.ts",
+    "src/components/**/*"
   ]
 }

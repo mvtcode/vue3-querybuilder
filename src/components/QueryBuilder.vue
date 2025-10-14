@@ -47,7 +47,7 @@
             </el-button>
           </div>
           <div class="group-header-right">
-            <div v-show="isRoot">(version: {{ packageJson.version }})</div>
+            <!-- <div v-show="isRoot">(version: {{ packageJson.version }})</div> -->
           </div>
         </div>
         <!-- end group header -->
@@ -166,7 +166,7 @@ import type {
   QueryBuilderValue,
 } from '../types/querybuilder'
 import { Operator, OperatorText } from '../types/querybuilder'
-import packageJson from '../../package.json'
+// import packageJson from '../../package.json'
 
 interface Props {
   modelValue: QueryBuilderGroup | QueryBuilderRule

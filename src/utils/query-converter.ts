@@ -359,7 +359,7 @@ const mapOperator: Record<Operator, string> = {
   [Operator.IN]: 'IN',
   [Operator.NOT_IN]: 'NIN',
   [Operator.BETWEEN]: 'BETWEEN',
-  [Operator.NOT_BETWEEN]: 'NOTBETWEEN',
+  [Operator.NOT_BETWEEN]: 'NBETWEEN',
   [Operator.IS_EMPTY]: 'IS_NULL',
   [Operator.IS_NOT_EMPTY]: 'IS_NOT_NULL',
 }
@@ -412,10 +412,7 @@ const toDateRange = (field: string, v: Date[], operator: Operator) => {
   }
 }
 
-export const toMnpQuery = (
-  group: QueryBuilderGroup,
-  filters: QueryBuilderFilter[],
-): string => {
+export const toMnpQuery = (group: QueryBuilderGroup, filters: QueryBuilderFilter[]): string => {
   const mapFieldDataType: Record<string, FilterType> = filters.reduce(
     (map, filter) => {
       map[filter.field] = filter.type
