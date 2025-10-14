@@ -143,7 +143,7 @@ const filters: QueryBuilderFilter[] = [
             v-if="!isBetween"
             v-model="rule.value"
             :min="0"
-            :max="100"
+            :max="1_000_000"
             clearable
             :style="{ width: `${widthValueInput}px` }"
             :disabled="[Operator.IS_EMPTY, Operator.IS_NOT_EMPTY].includes(rule.operator)"
@@ -152,7 +152,7 @@ const filters: QueryBuilderFilter[] = [
             <el-input-number
               v-model="(rule.value as number[])[0]"
               :min="0"
-              :max="100"
+              :max="1_000_000"
               clearable
               :style="{ width: `${widthValueInput}px` }"
               :disabled="[Operator.IS_EMPTY, Operator.IS_NOT_EMPTY].includes(rule.operator)"
@@ -161,7 +161,7 @@ const filters: QueryBuilderFilter[] = [
             <el-input-number
               v-model="(rule.value as number[])[1]"
               :min="0"
-              :max="100"
+              :max="1_000_000"
               clearable
               :style="{ width: `${widthValueInput}px` }"
               :disabled="[Operator.IS_EMPTY, Operator.IS_NOT_EMPTY].includes(rule.operator)"

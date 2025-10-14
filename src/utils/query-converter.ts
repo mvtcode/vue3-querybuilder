@@ -351,7 +351,7 @@ const mapOperator: Record<Operator, string> = {
   [Operator.BEGINS_WITH]: 'LIKE%',
   [Operator.NOT_BEGINS_WITH]: 'NLIKE%',
   [Operator.ENDS_WITH]: '%LIKE',
-  [Operator.NOT_ENDS_WITH]: 'N%LIKE',
+  [Operator.NOT_ENDS_WITH]: '%NLIKE',
   [Operator.GREATER]: '>',
   [Operator.GREATER_OR_EQUAL]: '>=',
   [Operator.LESS]: '<',
@@ -472,7 +472,7 @@ export const convertToMnpQuery = (
             case Operator.NOT_BETWEEN:
               if (Array.isArray(value) && !value.includes(undefined)) {
                 results.push(
-                  `{${field}} ${operatorMnp} ${(value as number[])?.[0]} AND ${(value as number[])?.[1]}`,
+                  `{${field}} ${operatorMnp} [${(value as number[])?.[0]}, ${(value as number[])?.[1]}]`,
                 )
               }
               break
@@ -503,22 +503,12 @@ export const convertToMnpQuery = (
         //   }
         //   break
         case FilterType.DATETIME:
-          // if (Array.isArray(value)) {
-          //   value.length &&
-          //     results.push(
-          //       `({${field}} ${operatorMnp} #${dayjs(value[0] as Date).format('YYYY-MM-DD HH:mm:ss')}# AND #${dayjs(value[1] as Date).format('YYYY-MM-DD HH:mm:ss')}#)`,
-          //     )
-          // } else {
-          //   results.push(
-          //     `{${field}} ${operatorMnp} #${dayjs(value as Date).format('YYYY-MM-DD HH:mm:ss')}#`,
-          //   )
-          // }
           switch (operator) {
             case Operator.BETWEEN:
             case Operator.NOT_BETWEEN:
               if (Array.isArray(value) && !value.includes(undefined)) {
                 results.push(
-                  `({${field}} ${operatorMnp} #${formatDate(value[0] as Date, 'YYYY-MM-DD HH:mm:ss')}# AND #${formatDate(value[1] as Date, 'YYYY-MM-DD HH:mm:ss')}#)`,
+                  `({${field}} ${operatorMnp} [#${formatDate(value[0] as Date, 'YYYY-MM-DD HH:mm:ss')}#, #${formatDate(value[1] as Date, 'YYYY-MM-DD HH:mm:ss')}#]`,
                 )
               }
               break
