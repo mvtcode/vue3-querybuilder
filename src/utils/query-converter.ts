@@ -412,7 +412,7 @@ const toDateRange = (field: string, v: Date[], operator: Operator) => {
   }
 }
 
-export const convertToMnpQuery = (
+export const toMnpQuery = (
   group: QueryBuilderGroup,
   filters: QueryBuilderFilter[],
 ): string => {
@@ -429,7 +429,7 @@ export const convertToMnpQuery = (
 
   for (const rule of group.rules) {
     if ('condition' in rule) {
-      results.push(`(${convertToMnpQuery(rule as QueryBuilderGroup, filters)})`)
+      results.push(`(${toMnpQuery(rule as QueryBuilderGroup, filters)})`)
     } else {
       const field = rule.field
       const operator = rule.operator

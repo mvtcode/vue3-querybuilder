@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import QueryBuilder from './components/QueryBuilder.vue'
 import type { QueryBuilderGroup, QueryBuilderFilter } from './types/querybuilder'
 import { FilterType, Operator } from './types/querybuilder'
-import { toMongo, toSQL, convertToMnpQuery } from './utils/query-converter'
+import { toMongo, toSQL, toMnpQuery } from './utils/query-converter'
 
 const rules = ref<QueryBuilderGroup>({
   condition: 'AND',
@@ -246,7 +246,7 @@ const filters: QueryBuilderFilter[] = [
           <el-card shadow="never">
             <h3>MNP Query:</h3>
             <el-scrollbar height="100px" always class="border-box">
-              <pre>{{ convertToMnpQuery(rules, filters) }}</pre>
+              <pre>{{ toMnpQuery(rules, filters) }}</pre>
             </el-scrollbar>
           </el-card>
         </el-col>
