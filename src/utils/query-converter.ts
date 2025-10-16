@@ -426,7 +426,10 @@ export const toMnpQuery = (group: QueryBuilderGroup, filters: QueryBuilderFilter
 
   for (const rule of group.rules) {
     if ('condition' in rule) {
-      results.push(`(${toMnpQuery(rule as QueryBuilderGroup, filters)})`)
+      const subQuery = toMnpQuery(rule as QueryBuilderGroup, filters)
+      if (subQuery) {
+        results.push(`(${subQuery})`)
+      }
     } else {
       const field = rule.field
       const operator = rule.operator

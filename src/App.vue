@@ -128,7 +128,19 @@ const filters: QueryBuilderFilter[] = [
       <h1>Vue 3 QueryBuilder Demo</h1>
     </el-header>
     <el-main>
-      <QueryBuilder v-model="rules" :filters="filters">
+      <QueryBuilder
+        v-model="rules"
+        :filters="filters"
+        :is-show-operator="false"
+        :max-depth="3"
+        label-add-rule="Thêm Rule"
+        label-add-group="Thêm Group"
+        label-remove-group="Xóa Group"
+        label-from="Từ"
+        label-to="Đến"
+        label-and="Và"
+        label-or="Hoặc"
+      >
         <template #email="{ rule, widthValueInput }">
           <el-input
             v-model="rule.value"

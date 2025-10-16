@@ -66,8 +66,24 @@
                 v-model="group.rules[index]"
                 :filters="filters"
                 :is-root="false"
-                :max-depth="maxDepth"
+                :max-depth="maxDepth > 0 ? maxDepth - 1 : 0"
                 @remove="removeRule(index)"
+                :is-show-operator="isShowOperator"
+                :label-add-rule="labelAddRule"
+                :label-add-group="labelAddGroup"
+                :label-remove-group="labelRemoveGroup"
+                :label-from="labelFrom"
+                :label-to="labelTo"
+                :label-and="labelAnd"
+                :label-or="labelOr"
+                :label-select-field="labelSelectField"
+                :label-select-operator="labelSelectOperator"
+                :label-enter-value="labelEnterValue"
+                :label-remove-rule="labelRemoveRule"
+                :label-condition="labelCondition"
+                :width-field-select="widthFieldSelect"
+                :width-operator-select="widthOperatorSelect"
+                :width-value-input="widthValueInput"
               >
                 <template v-for="(_, name) in $slots" #[name]="slotData: any">
                   <slot :name="name" v-bind="slotData" />
@@ -173,6 +189,7 @@ interface Props {
   filters: QueryBuilderFilter[]
   isRoot?: boolean
   maxDepth?: number
+  isShowOperator?: boolean
   labelAddRule?: string
   labelAddGroup?: string
   labelRemoveGroup?: string
@@ -192,6 +209,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   isRoot: true,
+  isShowOperator: true,
   labelAddRule: 'Add Rule',
   labelAddGroup: 'Add Group',
   labelRemoveGroup: 'Remove Group',
@@ -404,7 +422,11 @@ const canAddGroup = computed(() => {
   }
 
   const currentDepth = calculateDepth(group.value)
-  return currentDepth < props.maxDepth
+  // Khi thêm sub group mới (rỗng), depth tối thiểu là 2 (root + sub group)
+  // Nếu đã có sub group, thêm sub group cùng level không làm tăng depth
+  // Vậy depth sau khi thêm = max(currentDepth, 2)
+  const depthAfterAdd = Math.max(currentDepth, 2)
+  return depthAfterAdd <= props.maxDepth
 })
 </script>
 
