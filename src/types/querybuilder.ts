@@ -3,6 +3,8 @@ export enum FilterType {
   NUMBER = 'number',
   INTEGER = 'integer',
   DATE = 'date',
+  // TIME = 'time',
+  DATETIME = 'datetime',
   BOOLEAN = 'boolean',
   EMAIL = 'email',
 }
@@ -26,27 +28,31 @@ export enum Operator {
   NOT_IN = 'not_in',
   BETWEEN = 'between',
   NOT_BETWEEN = 'not_between',
+  // IS_NULL = 'is_null',
+  // IS_NOT_NULL = 'is_not_null',
 }
 
 export const OperatorText: Record<Operator, string> = {
-  [Operator.EQUAL]: '=',
-  [Operator.NOT_EQUAL]: '≠',
-  [Operator.CONTAINS]: 'Có chứa',
-  [Operator.NOT_CONTAINS]: 'Không có chứa',
-  [Operator.BEGINS_WITH]: 'Bắt đầu bằng',
-  [Operator.NOT_BEGINS_WITH]: 'Không bắt đầu bằng',
-  [Operator.ENDS_WITH]: 'Kết thúc bằng',
-  [Operator.NOT_ENDS_WITH]: 'Không kết thúc bằng',
-  [Operator.IS_EMPTY]: 'Rỗng',
-  [Operator.IS_NOT_EMPTY]: 'Không rỗng',
-  [Operator.GREATER]: '>',
-  [Operator.GREATER_OR_EQUAL]: '≥',
-  [Operator.LESS]: '<',
-  [Operator.LESS_OR_EQUAL]: '≤',
-  [Operator.IN]: 'IN',
-  [Operator.NOT_IN]: 'NOT IN',
-  [Operator.BETWEEN]: 'BETWEEN',
-  [Operator.NOT_BETWEEN]: 'NOT BETWEEN',
+  [Operator.EQUAL]: 'queryBuilder.operators.equal',
+  [Operator.NOT_EQUAL]: 'queryBuilder.operators.not_equal',
+  [Operator.CONTAINS]: 'queryBuilder.operators.contains',
+  [Operator.NOT_CONTAINS]: 'queryBuilder.operators.not_contains',
+  [Operator.BEGINS_WITH]: 'queryBuilder.operators.begins_with',
+  [Operator.NOT_BEGINS_WITH]: 'queryBuilder.operators.not_begins_with',
+  [Operator.ENDS_WITH]: 'queryBuilder.operators.ends_with',
+  [Operator.NOT_ENDS_WITH]: 'queryBuilder.operators.not_ends_with',
+  [Operator.IS_EMPTY]: 'queryBuilder.operators.is_empty',
+  [Operator.IS_NOT_EMPTY]: 'queryBuilder.operators.is_not_empty',
+  [Operator.GREATER]: 'queryBuilder.operators.greater',
+  [Operator.GREATER_OR_EQUAL]: 'queryBuilder.operators.greater_or_equal',
+  [Operator.LESS]: 'queryBuilder.operators.less',
+  [Operator.LESS_OR_EQUAL]: 'queryBuilder.operators.less_or_equal',
+  [Operator.IN]: 'queryBuilder.operators.in',
+  [Operator.NOT_IN]: 'queryBuilder.operators.not_in',
+  [Operator.BETWEEN]: 'queryBuilder.operators.between',
+  [Operator.NOT_BETWEEN]: 'queryBuilder.operators.not_between',
+  // [Operator.IS_NULL]: 'queryBuilder.operators.is_null',
+  // [Operator.IS_NOT_NULL]: 'queryBuilder.operators.is_not_null',
 }
 
 export type QueryBuilderValue =
@@ -54,8 +60,9 @@ export type QueryBuilderValue =
   | number
   | boolean
   | Date
+  | null
   | undefined
-  | (string | number | boolean | Date | undefined)[]
+  | (string | number | boolean | Date | undefined | null)[]
 
 export interface QueryBuilderRule {
   id: string
@@ -83,7 +90,7 @@ export interface QueryBuilderFilter {
     | Date
     | undefined
     | (string | number | boolean | Date | undefined)[]
-  values?: { value: string | number | boolean; text: string }[]
+  values?: { value: string | number | boolean | Date; text: string }[]
   maxOccurrences?: number
   validation?: {
     min?: number
