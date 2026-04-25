@@ -45,6 +45,14 @@ git clone git@github.com:mvtcode/vue3-querybuilder.git
 
 ## 🚀 Quick Start / Bắt đầu nhanh
 
+`main.ts`
+
+```vue
+import '@mvtcode/vue3-querybuilder/style.css'
+```
+
+`.vue` file
+
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
@@ -73,7 +81,7 @@ const filters: QueryBuilderFilter[] = [
 </script>
 
 <template>
-  <QueryBuilder v-model="rules" :filters="filters" language="en" @change="console.log(rules)" />
+  <QueryBuilder v-model="rules" :filters="filters" language="en" @change="console.log(rules)" size="small" />
 </template>
 ```
 
